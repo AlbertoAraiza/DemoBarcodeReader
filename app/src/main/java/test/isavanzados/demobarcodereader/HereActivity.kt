@@ -10,17 +10,34 @@ import com.here.android.mpa.mapping.Map;
 import com.here.android.mpa.mapping.AndroidXMapFragment;
 import androidx.fragment.app.FragmentActivity;
 import com.here.android.mpa.cluster.ClusterLayer
+import com.here.android.mpa.common.GeoPosition
+import com.here.android.mpa.common.PositioningManager
 import com.here.android.mpa.mapping.MapMarker
 import es.dmoral.toasty.Toasty
 import kotlinx.android.synthetic.main.activity_here.*
 import java.io.File
+import java.lang.ref.WeakReference
+import java.math.BigDecimal
+import java.math.RoundingMode
 import kotlin.concurrent.fixedRateTimer
 
 class HereActivity : FragmentActivity() {
+    private var posManager :PositioningManager? = null
+    private var paused = false
+    private var map :Map? = null
+    private var positionListener :PositioningManager.OnPositionChangedListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initialize()
+        /*val position = posManager!!.position
+        val latitude = position.coordinate.latitude//BigDecimal(position.coordinate.latitude).setScale(7,RoundingMode.HALF_EVEN).toDouble()
+        val longitude = position.coordinate.longitude
+        val positionText = "Location latitud: $latitude longitude: $longitude"
+        Toasty.info(this@HereActivity, "${latitude} , ${longitude}").show()
+        tvTitle.text = positionText
+        val geoLocation = GeoCoordinate(latitude,longitude)
+        map!!.setCenter(geoLocation,Map.Animation.NONE)*/
     }
 
     private fun initialize(){
@@ -36,23 +53,65 @@ class HereActivity : FragmentActivity() {
             finalMapFragment.init(object :OnEngineInitListener{
                 override fun onEngineInitializationCompleted(error :OnEngineInitListener.Error?) {
                     if (error == OnEngineInitListener.Error.NONE){
-                        val map = finalMapFragment.map!!
-                        val geoLocation = GeoCoordinate(21.8761704,-102.2771799)
-                        val mapMarker = MapMarker(geoLocation)
-                        val clusterLayer = ClusterLayer()
+                        map = finalMapFragment.map!!
+                        
+                        positionListener = object :PositioningManager.OnPositionChangedListener{
+                            override fun onPositionFixChanged(
+                                method: PositioningManager.LocationMethod?,
+                                status: PositioningManager.LocationStatus?
+                            ) {
 
-                        clusterLayer.addMarker(mapMarker)
-                        clusterLayer.addMarker(MapMarker(GeoCoordinate(21.8806055,-102.2986796)))
-                        map.setSafetySpotsVisible(true)
-                        map.setLandmarksVisible(true)
-                        map.addClusterLayer(clusterLayer)
-                        //21.8761704,-102.2771799
-                        map.setCenter(geoLocation, Map.Animation.BOW, 17.8, Map.MOVE_PRESERVE_ORIENTATION,45f)
+                            }
+
+                            override fun onPositionUpdated(
+                                locationMethod: PositioningManager.LocationMethod,
+                                position: GeoPosition?,
+                                isMapMatched: Boolean
+                            ) {
+                                if (!paused) {
+                                    tvTitle.text = position!!.coordinate.toString()
+                                    map!!.setCenter(position.coordinate, Map.Animation.BOW)
+                                }
+                            }
+                        }
+                        posManager = PositioningManager.getInstance()
+                        posManager?.addListener(WeakReference(positionListener))
+                        // display position indicator
+                        map!!.positionIndicator.isVisible = true
+                        map!!.setLandmarksVisible(true)
+                        if(posManager!!.start(PositioningManager.LocationMethod.GPS_NETWORK))
+                            Toasty.info(this@HereActivity, "Posmanafer Initialized").show()
+                        else
+                            Toasty.error(this@HereActivity, "Posmanafer couldn't initialize").show()
                     }else{
                         Toasty.error(this@HereActivity, "ERROR: Cannot initialize AndroidXMapFragment: " + error?.details).show()
                     }
                 }
             })
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        paused = false
+        if (posManager!=null){
+            posManager!!.start(PositioningManager.LocationMethod.GPS_NETWORK)
+        }
+    }
+
+    override fun onPause() {
+        if (posManager!=null){
+            posManager!!.stop()
+        }
+        super.onPause()
+        paused = true
+    }
+
+    override fun onDestroy() {
+        if (posManager!=null){
+            posManager!!.removeListener(positionListener!!)
+        }
+        map = null
+        super.onDestroy()
     }
 }

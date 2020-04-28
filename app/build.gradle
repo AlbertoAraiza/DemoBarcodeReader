@@ -15,6 +15,7 @@ android {
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         multiDexEnabled true
+        vectorDrawables.useSupportLibrary = true
     }
 
     buildTypes {
@@ -50,5 +51,5 @@ dependencies {
     //MAterial Design
     implementation 'com.google.android.material:material:1.1.0'
     //Here
-    implementation(name:'HERE-sdk', ext:'aar')
+    implementation(name: 'HERE-sdk', ext: 'aar')
 }

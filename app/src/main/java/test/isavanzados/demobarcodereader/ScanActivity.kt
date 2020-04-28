@@ -17,7 +17,6 @@ import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
 import es.dmoral.toasty.Toasty
-import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_scan.*
 
 
@@ -25,7 +24,6 @@ class ScanActivity : AppCompatActivity() {
     var ctx : Context? = null
     var detector: BarcodeDetector? = null
     var cameraSource: CameraSource? = null
-    var cameraFacing = CameraSource.CAMERA_FACING_BACK
 
     private val REQUEST_CAMERA_PERMISSION = 1001
 
@@ -47,32 +45,29 @@ class ScanActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
             askCameraPermision()
         } else {
-
             setupControls()
         }
         btnChangeCamera.setOnClickListener{
-
             changeCamera()
         }
     }
 
     private fun changeCamera() {
-        cameraSource?.release()
-        detector = BarcodeDetector.Builder(this).build()
+        if (cameraSource != null){
+            cameraSource?.release()
+        }
         if (cameraFacing == CameraSource.CAMERA_FACING_BACK){
             cameraFacing = CameraSource.CAMERA_FACING_FRONT
         }else{
             cameraFacing = CameraSource.CAMERA_FACING_BACK
         }
-        svCamera.holder.addCallback(surfaceCallback)
-        detector?.setProcessor(processor)
-
+        setupControls()
+        cameraSource?.start()
     }
 
     private fun setupControls(){
         detector = BarcodeDetector.Builder(this).build()
-        cameraSource = CameraSource.Builder(this, detector).setAutoFocusEnabled(true).build()
-        svCamera.holder.addCallback(surfaceCallback)
+        cameraSource = CameraSource.Builder(this, detector).setFacing(cameraFacing).setAutoFocusEnabled(true).build()
         detector?.setProcessor(processor)
     }
 
@@ -108,7 +103,7 @@ class ScanActivity : AppCompatActivity() {
             try{
                 cameraSource?.start(holder)
             }catch (e:Exception){
-                Toasty.info(applicationContext, "Algo salio mal").show()
+                Toasty.error(applicationContext, "Algo salio mal " + e.message).show()
                 e.printStackTrace()
             }
         }
@@ -136,6 +131,7 @@ class ScanActivity : AppCompatActivity() {
     }
 
     companion object {
+        var cameraFacing = CameraSource.CAMERA_FACING_BACK
         class MyAsyncTask internal constructor(context: Context) : AsyncTask<String, String, String?>() {
             private val ctx: Context = context
 
