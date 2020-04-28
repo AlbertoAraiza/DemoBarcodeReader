@@ -4,14 +4,12 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.AsyncTask
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.util.Log
 import android.util.SparseArray
 import android.view.SurfaceHolder
 import android.view.View
-import android.view.Window
-import android.view.WindowManager
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import com.google.android.gms.vision.CameraSource
@@ -19,12 +17,15 @@ import com.google.android.gms.vision.Detector
 import com.google.android.gms.vision.barcode.Barcode
 import com.google.android.gms.vision.barcode.BarcodeDetector
 import es.dmoral.toasty.Toasty
+import kotlinx.android.synthetic.main.activity_main.*
 import kotlinx.android.synthetic.main.activity_scan.*
+
 
 class ScanActivity : AppCompatActivity() {
     var ctx : Context? = null
     var detector: BarcodeDetector? = null
     var cameraSource: CameraSource? = null
+    var cameraFacing = CameraSource.CAMERA_FACING_BACK
 
     private val REQUEST_CAMERA_PERMISSION = 1001
 
@@ -46,8 +47,26 @@ class ScanActivity : AppCompatActivity() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
             askCameraPermision()
         } else {
+
             setupControls()
         }
+        btnChangeCamera.setOnClickListener{
+
+            changeCamera()
+        }
+    }
+
+    private fun changeCamera() {
+        cameraSource?.release()
+        detector = BarcodeDetector.Builder(this).build()
+        if (cameraFacing == CameraSource.CAMERA_FACING_BACK){
+            cameraFacing = CameraSource.CAMERA_FACING_FRONT
+        }else{
+            cameraFacing = CameraSource.CAMERA_FACING_BACK
+        }
+        svCamera.holder.addCallback(surfaceCallback)
+        detector?.setProcessor(processor)
+
     }
 
     private fun setupControls(){
@@ -139,5 +158,9 @@ class ScanActivity : AppCompatActivity() {
                 ContextCompat.startActivity(ctx, i, null)
             }
         }
+    }
+
+    fun checkCameraFront(context: Context): Boolean {
+        return context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)
     }
 }
