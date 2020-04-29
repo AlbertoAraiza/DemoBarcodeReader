@@ -30,14 +30,6 @@ class HereActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         initialize()
-        /*val position = posManager!!.position
-        val latitude = position.coordinate.latitude//BigDecimal(position.coordinate.latitude).setScale(7,RoundingMode.HALF_EVEN).toDouble()
-        val longitude = position.coordinate.longitude
-        val positionText = "Location latitud: $latitude longitude: $longitude"
-        Toasty.info(this@HereActivity, "${latitude} , ${longitude}").show()
-        tvTitle.text = positionText
-        val geoLocation = GeoCoordinate(latitude,longitude)
-        map!!.setCenter(geoLocation,Map.Animation.NONE)*/
     }
 
     private fun initialize(){
@@ -54,7 +46,7 @@ class HereActivity : FragmentActivity() {
                 override fun onEngineInitializationCompleted(error :OnEngineInitListener.Error?) {
                     if (error == OnEngineInitListener.Error.NONE){
                         map = finalMapFragment.map!!
-                        
+
                         positionListener = object :PositioningManager.OnPositionChangedListener{
                             override fun onPositionFixChanged(
                                 method: PositioningManager.LocationMethod?,
@@ -70,7 +62,7 @@ class HereActivity : FragmentActivity() {
                             ) {
                                 if (!paused) {
                                     tvTitle.text = position!!.coordinate.toString()
-                                    map!!.setCenter(position.coordinate, Map.Animation.BOW)
+                                    map!!.setCenter(position.coordinate, Map.Animation.BOW, Map.MOVE_PRESERVE_ZOOM_LEVEL, Map.MOVE_PRESERVE_ORIENTATION, Map.MOVE_PRESERVE_TILT)
                                 }
                             }
                         }
@@ -79,6 +71,7 @@ class HereActivity : FragmentActivity() {
                         // display position indicator
                         map!!.positionIndicator.isVisible = true
                         map!!.setLandmarksVisible(true)
+                        map?.setCenter(GeoCoordinate(21.8806055,-102.2986796),Map.Animation.NONE,17.0, Map.MOVE_PRESERVE_ORIENTATION, 35f)
                         if(posManager!!.start(PositioningManager.LocationMethod.GPS_NETWORK))
                             Toasty.info(this@HereActivity, "Posmanafer Initialized").show()
                         else

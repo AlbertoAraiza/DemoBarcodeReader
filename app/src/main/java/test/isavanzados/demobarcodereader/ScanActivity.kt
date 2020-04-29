@@ -30,16 +30,9 @@ class ScanActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_scan)
-
         window.decorView.apply {
-            // Hide both the navigation bar and the status bar.
-            // SYSTEM_UI_FLAG_FULLSCREEN is only available on Android 4.1 and higher, but as
-            // a general rule, you should design your app to hide the status bar whenever you
-            // hide the navigation bar.
             systemUiVisibility = View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_FULLSCREEN
         }
-
-        supportActionBar?.hide()
         ctx = this
 
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED){
@@ -47,27 +40,29 @@ class ScanActivity : AppCompatActivity() {
         } else {
             setupControls()
         }
-        btnChangeCamera.setOnClickListener{
-            changeCamera()
-        }
-    }
 
-    private fun changeCamera() {
-        if (cameraSource != null){
-            cameraSource?.release()
+
+        btnChangeCamera.setOnClickListener{
+            if (checkCameraFront(this)) {
+                if (cameraSource != null) {
+                    cameraSource!!.release()
+                }
+                if (cameraFacing == CameraSource.CAMERA_FACING_FRONT)
+                    cameraFacing = CameraSource.CAMERA_FACING_BACK
+                else
+                    cameraFacing = CameraSource.CAMERA_FACING_FRONT
+                finish()
+                startActivity(intent)
+            }else{
+                Toasty.info(this, "Este dispoitivo no tiene camara frontal")
+            }
         }
-        if (cameraFacing == CameraSource.CAMERA_FACING_BACK){
-            cameraFacing = CameraSource.CAMERA_FACING_FRONT
-        }else{
-            cameraFacing = CameraSource.CAMERA_FACING_BACK
-        }
-        setupControls()
-        cameraSource?.start()
     }
 
     private fun setupControls(){
         detector = BarcodeDetector.Builder(this).build()
         cameraSource = CameraSource.Builder(this, detector).setFacing(cameraFacing).setAutoFocusEnabled(true).build()
+        svCamera.holder.addCallback(surfaceHolderCallback)
         detector?.setProcessor(processor)
     }
 
@@ -92,24 +87,12 @@ class ScanActivity : AppCompatActivity() {
         }
     }
 
-    private val surfaceCallback = object : SurfaceHolder.Callback{
-        override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {}
 
-        override fun surfaceDestroyed(holder: SurfaceHolder?) {
-            cameraSource?.stop()
-        }
-
-        override fun surfaceCreated(holder: SurfaceHolder?) {
-            try{
-                cameraSource?.start(holder)
-            }catch (e:Exception){
-                Toasty.error(applicationContext, "Algo salio mal " + e.message).show()
-                e.printStackTrace()
-            }
-        }
+    fun checkCameraFront(context: Context): Boolean {
+        return context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)
     }
 
-    private val processor = object : Detector.Processor<Barcode>{
+    val processor = object : Detector.Processor<Barcode>{
         override fun release() {}
 
         override fun receiveDetections(detections: Detector.Detections<Barcode>?) {
@@ -119,44 +102,39 @@ class ScanActivity : AppCompatActivity() {
                         cameraSource?.release()
                         val codes: SparseArray<Barcode> = detections.detectedItems
                         val code = codes.valueAt(0)
-                        val task = MyAsyncTask(ctx!!)
-                        task.execute(code.displayValue)
+                        Toasty.success(ctx!!, code.displayValue).show()
+                        //val task = MyAsyncTask(ctx!!)
+                        //task.execute(code.displayValue)
                         Log.e("Scanner", code.displayValue)
                     }catch (e:Exception){
                         e.printStackTrace()
+                        finish()
                     }
                 }
             }
         }
     }
+    val surfaceHolderCallback = object: SurfaceHolder.Callback{
+        override fun surfaceChanged(holder: SurfaceHolder?, format: Int, width: Int, height: Int) {
 
-    companion object {
-        var cameraFacing = CameraSource.CAMERA_FACING_BACK
-        class MyAsyncTask internal constructor(context: Context) : AsyncTask<String, String, String?>() {
-            private val ctx: Context = context
+        }
 
-            override fun doInBackground(vararg params: String?): String? {
-                var msg = ""
-                try {
+        override fun surfaceDestroyed(holder: SurfaceHolder?) {
+            cameraSource!!.stop()
+        }
 
-                }catch (e:Exception){
-                    e.printStackTrace()
-                    msg = "error"
-                }
-                return msg
-            }
-
-            override fun onPostExecute(result: String?) {
-                if (!result.isNullOrEmpty())
-                    Toasty.info(ctx, result).show()
-                val i = Intent(ctx,MainActivity::class.java)
-                i.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-                ContextCompat.startActivity(ctx, i, null)
+        override fun surfaceCreated(holder: SurfaceHolder?) {
+            try{
+                cameraSource!!.start(holder)
+            }catch (e:Exception){
+                Toasty.error(applicationContext, "Algo salio mal " + e.message).show()
+                e.printStackTrace()
             }
         }
     }
 
-    fun checkCameraFront(context: Context): Boolean {
-        return context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_FRONT)
+
+    companion object{
+        var cameraFacing = CameraSource.CAMERA_FACING_BACK
     }
 }
